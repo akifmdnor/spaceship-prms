@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import type { PrismaClient } from "@prisma/client";
 import { TIER_LABEL } from "../domain/TierLevel.js";
 import { TierLevel } from "../domain/TierLevel.js";
+import { problemJson } from "../lib/httpError.js";
 import { createRequireAuth } from "../middleware/requireAuth.js";
 
 const loginSchema = (body: unknown): { email: string; password: string } | null => {
@@ -22,16 +23,16 @@ export function createAuthRouter(prisma: PrismaClient, jwtSecret: string): Route
     try {
       const parsed = loginSchema(req.body);
       if (!parsed) {
-        return res.status(400).json({ error: "Email and password required" });
+        return problemJson(res, 400, "BAD_REQUEST", "Email and password required");
       }
       const email = parsed.email.toLowerCase().trim();
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
-        return res.status(401).json({ error: "Invalid email or password" });
+        return problemJson(res, 401, "UNAUTHORIZED", "Invalid email or password");
       }
       const pwOk = await bcrypt.compare(parsed.password, user.passwordHash);
       if (!pwOk) {
-        return res.status(401).json({ error: "Invalid email or password" });
+        return problemJson(res, 401, "UNAUTHORIZED", "Invalid email or password");
       }
 
       const token = jwt.sign({ sub: user.id, email: user.email }, jwtSecret, {
@@ -60,7 +61,7 @@ export function createAuthRouter(prisma: PrismaClient, jwtSecret: string): Route
       const id = req.authUserId!;
       const user = await prisma.user.findUnique({ where: { id } });
       if (!user) {
-        return res.status(401).json({ error: "User not found" });
+        return problemJson(res, 401, "UNAUTHORIZED", "User not found");
       }
       return res.json({
         id: user.id,

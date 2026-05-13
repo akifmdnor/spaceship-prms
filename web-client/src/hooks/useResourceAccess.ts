@@ -8,8 +8,7 @@ import type { TierLevelNum } from "@/types";
  */
 export function useResourceAccess(activeTier: TierLevelNum | undefined) {
   const canAccess = useMemo(() => {
-    return (required: TierLevelNum) =>
-      typeof activeTier === "number" && activeTier >= required;
+    return (required: TierLevelNum) => typeof activeTier === "number" && activeTier >= required;
   }, [activeTier]);
 
   const useFacility = useCallback(async (resourceId: string) => {

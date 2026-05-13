@@ -7,10 +7,7 @@ export function CrewLeadPanel() {
   const { users, activeUser, refreshUsers } = useUserContext();
   const [message, setMessage] = useState<string | null>(null);
 
-  const crewLeadCount = useMemo(
-    () => users.filter((u) => u.role === "crew_lead").length,
-    [users]
-  );
+  const crewLeadCount = useMemo(() => users.filter((u) => u.role === "crew_lead").length, [users]);
 
   const slotsFull = crewLeadCount >= 3;
   const canManage = activeUser?.role === "crew_lead";

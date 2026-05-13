@@ -23,9 +23,14 @@ async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
     const msg =
-      typeof errBody === "object" && errBody && "error" in errBody
-        ? String((errBody as { error: string }).error)
-        : res.statusText;
+      typeof errBody === "object" &&
+      errBody &&
+      "message" in errBody &&
+      typeof (errBody as { message?: unknown }).message === "string"
+        ? String((errBody as { message: string }).message)
+        : typeof errBody === "object" && errBody && "error" in errBody
+          ? String((errBody as { error: string }).error)
+          : res.statusText;
     throw new Error(msg || `Request failed (${res.status})`);
   }
   return res.json() as Promise<T>;
@@ -99,7 +104,14 @@ export const api = {
   },
 
   async myUsage(limit?: number): Promise<
-    { id: string; ts: string; userId: string; resourceId: string; resourceName: string; outcome: string }[]
+    {
+      id: string;
+      ts: string;
+      userId: string;
+      resourceId: string;
+      resourceName: string;
+      outcome: string;
+    }[]
   > {
     const q = limit != null ? `?limit=${encodeURIComponent(String(limit))}` : "";
     return handle(

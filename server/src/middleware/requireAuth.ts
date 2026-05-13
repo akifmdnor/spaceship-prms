@@ -1,11 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { problemJson } from "../lib/httpError.js";
 
 function isTestAuth(): boolean {
-  return (
-    process.env.NODE_ENV === "test" ||
-    process.env.PRMS_AUTH_TEST === "1"
-  );
+  return process.env.NODE_ENV === "test" || process.env.PRMS_AUTH_TEST === "1";
 }
 
 export function createRequireAuth(jwtSecret: string) {
@@ -13,7 +11,7 @@ export function createRequireAuth(jwtSecret: string) {
     if (isTestAuth()) {
       const id = req.header("X-User-Id");
       if (!id || id.trim() === "") {
-        res.status(401).json({ error: "Unauthorized (tests: pass X-User-Id)" });
+        problemJson(res, 401, "UNAUTHORIZED", "Unauthorized (tests: pass X-User-Id)");
         return;
       }
       req.authUserId = id.trim();
@@ -24,19 +22,19 @@ export function createRequireAuth(jwtSecret: string) {
     const hdr = req.headers.authorization;
     const token = hdr?.startsWith("Bearer ") ? hdr.slice(7) : null;
     if (!token) {
-      res.status(401).json({ error: "Missing or invalid Authorization header" });
+      problemJson(res, 401, "UNAUTHORIZED", "Missing or invalid Authorization header");
       return;
     }
     try {
       const p = jwt.verify(token, jwtSecret) as { sub?: string };
       if (!p.sub) {
-        res.status(401).json({ error: "Invalid token payload" });
+        problemJson(res, 401, "UNAUTHORIZED", "Invalid token payload");
         return;
       }
       req.authUserId = p.sub;
       next();
     } catch {
-      res.status(401).json({ error: "Invalid or expired token" });
+      problemJson(res, 401, "UNAUTHORIZED", "Invalid or expired token");
     }
   };
 }

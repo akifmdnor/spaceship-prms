@@ -115,14 +115,7 @@ export class PrismaUserRepository implements IUserRepository {
     const rows = await this.db.user.findMany();
     return rows.map(
       (u) =>
-        new Passenger(
-          u.id,
-          u.name,
-          u.tier as TierLevel,
-          u.isAdmin,
-          u.role as CrewRole,
-          u.email
-        )
+        new Passenger(u.id, u.name, u.tier as TierLevel, u.isAdmin, u.role as CrewRole, u.email)
     );
   }
 
@@ -162,7 +155,14 @@ export class PrismaUserRepository implements IUserRepository {
         where: { id: userId },
         data: { tier }
       });
-      return new Passenger(u.id, u.name, u.tier as TierLevel, u.isAdmin, u.role as CrewRole, u.email);
+      return new Passenger(
+        u.id,
+        u.name,
+        u.tier as TierLevel,
+        u.isAdmin,
+        u.role as CrewRole,
+        u.email
+      );
     } catch {
       return undefined;
     }

@@ -25,10 +25,7 @@ export class AdminService {
 
   async promoteToCrewLead(
     body: unknown
-  ): Promise<
-    | { ok: true; passenger: Passenger }
-    | { ok: false; status: number; error: string }
-  > {
+  ): Promise<{ ok: true; passenger: Passenger } | { ok: false; status: number; error: string }> {
     const parsed = promoteSchema.safeParse(body);
     if (!parsed.success) {
       return { ok: false, status: 400, error: "Invalid crew-lead promotion payload" };
@@ -72,10 +69,7 @@ export class AdminService {
 
   async upgradeTier(
     body: unknown
-  ): Promise<
-    | { ok: true; passenger: Passenger }
-    | { ok: false; status: number; error: string }
-  > {
+  ): Promise<{ ok: true; passenger: Passenger } | { ok: false; status: number; error: string }> {
     const parsed = tierUpgradeSchema.safeParse(body);
     if (!parsed.success) {
       return { ok: false, status: 400, error: "Invalid tier upgrade payload" };

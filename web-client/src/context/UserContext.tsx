@@ -55,10 +55,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     void refreshUsers();
   }, [refreshUsers]);
 
-  const activeUser = useMemo(
-    () => users.find((u) => u.id === activeId) ?? null,
-    [users, activeId]
-  );
+  const activeUser = useMemo(() => users.find((u) => u.id === activeId) ?? null, [users, activeId]);
 
   const value = useMemo<UserContextValue>(
     () => ({

@@ -64,11 +64,7 @@ export function Dashboard() {
                 Available resources ({tierLine} tier)
               </p>
             </div>
-            <ResourceGrid
-              resources={resources}
-              userTier={activeUser?.tier}
-              onAfterUse={refresh}
-            />
+            <ResourceGrid resources={resources} userTier={activeUser?.tier} onAfterUse={refresh} />
           </section>
 
           <aside className="flex min-h-0 flex-col gap-5 lg:sticky lg:top-6">

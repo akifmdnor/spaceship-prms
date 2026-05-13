@@ -22,11 +22,7 @@ export function createApiRouter(
   r.use(createPublicShipRoutes());
 
   const authTier = createAuthTierMiddleware({
-    users: container.users,
-    resources: container.resources,
-    audit: container.audit,
-    tierStrategy: container.tierStrategy,
-    usageEvents: container.usageEvents
+    resourceService: container.resourceService
   });
   const ruleOfThree = createRuleOfThreeMiddleware({
     users: container.users,

@@ -1,5 +1,6 @@
 import type { Passenger } from "../domain/Passenger.js";
 import type { Resource } from "../domain/Resource.js";
+import { TIER_LABEL, TierLevel } from "../domain/TierLevel.js";
 import { TierStrategy } from "../domain/TierStrategy.js";
 import type {
   IAuditLogRepository,
@@ -17,7 +18,49 @@ export class ResourceService {
     private readonly usageEvents: IUsageEventRepository
   ) {}
 
-  /** Persist usage + success audit after authTier middleware has allowed the request */
+  async authorizeResourceUse(userId: string, resourceId: string) {
+    const user = await this.users.findById(userId);
+    const resource = await this.resources.findById(resourceId);
+
+    if (!user || !resource) {
+      return { ok: false as const, status: 404 as const, error: "User or resource not found" };
+    }
+
+    if (!this.tierStrategy.canAccess(user.tier, resource.minRequiredTier)) {
+      await this.recordTierDenied(user, resource);
+      return {
+        ok: false as const,
+        status: 403 as const,
+        responseBody: {
+          error: "ACCESS_DENIED",
+          message: "Your tier cannot access this facility.",
+          details: {
+            requiredTier: TIER_LABEL[resource.minRequiredTier as TierLevel],
+            userTier: TIER_LABEL[user.tier as TierLevel]
+          }
+        },
+        user,
+        resource
+      };
+    }
+
+    return { ok: true as const, user, resource };
+  }
+
+  private async recordTierDenied(user: Passenger, resource: Resource) {
+    await this.audit.append({
+      severity: "alert",
+      message: `ALERT: User '${user.name}' (${TIER_LABEL[user.tier as TierLevel]}) attempted ${resource.name} — ACCESS DENIED.`
+    });
+    await this.usageEvents.record({
+      userId: user.id,
+      resourceId: resource.id,
+      resourceName: resource.name,
+      userTier: user.tier,
+      outcome: "denied"
+    });
+  }
+
   async recordSuccessfulUse(user: Passenger, resource: Resource) {
     const updated = await this.resources.incrementUsage(resource.id, 1);
     await this.audit.append({
@@ -34,37 +77,22 @@ export class ResourceService {
     return { resource: updated ?? resource, user };
   }
 
-  /** Used by tests and non-HTTP callers: single orchestration of tier check + side effects */
   async attemptAccess(userId: string, resourceId: string) {
-    const user = await this.users.findById(userId);
-    const resource = await this.resources.findById(resourceId);
-
-    if (!user || !resource) {
-      return { ok: false as const, status: 404, error: "User or resource not found" };
-    }
-
-    const allowed = this.tierStrategy.canAccess(user.tier, resource.minRequiredTier);
-    if (!allowed) {
-      await this.audit.append({
-        severity: "alert",
-        message: `ALERT: User '${user.name}' attempted ${resource.name} — ACCESS DENIED.`
-      });
-      await this.usageEvents.record({
-        userId: user.id,
-        resourceId: resource.id,
-        resourceName: resource.name,
-        userTier: user.tier,
-        outcome: "denied"
-      });
+    const gate = await this.authorizeResourceUse(userId, resourceId);
+    if (!gate.ok) {
+      if (gate.status === 404) {
+        return { ok: false as const, status: 404, error: gate.error };
+      }
       return {
         ok: false as const,
         status: 403,
         error: "Access denied for current tier",
-        user: { name: user.name, tier: user.tier },
-        resource: { name: resource.name, requiredTier: resource.minRequiredTier }
+        user: { name: gate.user.name, tier: gate.user.tier },
+        resource: { name: gate.resource.name, requiredTier: gate.resource.minRequiredTier }
       };
     }
 
+    const { user, resource } = gate;
     const { resource: updated } = await this.recordSuccessfulUse(user, resource);
     return {
       ok: true as const,

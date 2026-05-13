@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { TIER_LABEL } from "../domain/TierLevel.js";
+import { problemJson } from "../lib/httpError.js";
 import type { ShipContainer } from "./shipContainer.js";
 
 export function createUserRoutes(container: ShipContainer): Router {
@@ -9,7 +10,7 @@ export function createUserRoutes(container: ShipContainer): Router {
     try {
       const me = await container.users.findById(req.authUserId!);
       if (!me) {
-        return res.status(401).json({ error: "Session user not found" });
+        return problemJson(res, 401, "UNAUTHORIZED", "Session user not found");
       }
       const list = me.role === "crew_lead" ? await container.users.findAll() : [me];
       res.json(

@@ -6,7 +6,11 @@ import { api } from "@/lib/api";
 const FALLBACK_HINT: { email: string; password: string; role: string }[] = [
   { email: "afni@prms.local", password: "silver-demo", role: "Silver passenger" },
   { email: "zoe@prms.local", password: "silver-demo", role: "Silver passenger" },
-  { email: "everest@prms.local", password: "admin-demo", role: "Crew lead — roster, tier tools (3 lead slots)" },
+  {
+    email: "everest@prms.local",
+    password: "admin-demo",
+    role: "Crew lead — roster, tier tools (3 lead slots)"
+  },
   { email: "jack@prms.local", password: "gold-demo", role: "Gold passenger" },
   { email: "rhea@prms.local", password: "crew-demo", role: "Crew lead" },
   { email: "morgan@prms.local", password: "crew-demo", role: "Crew lead" },

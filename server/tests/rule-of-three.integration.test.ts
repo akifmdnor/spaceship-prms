@@ -36,6 +36,6 @@ describe("Rule of Three — crew lead promotions (integration)", () => {
       .send({ userId: "u-new", requestedByAdminId: "u-admin" });
 
     expect(res.status).toBe(403);
-    expect(String(res.body.error)).toMatch(/Rule of Three|maximum crew leads|slots full/i);
+    expect(String(res.body.message)).toMatch(/Rule of Three|maximum crew leads|slots full/i);
   });
 });
