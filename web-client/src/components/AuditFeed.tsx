@@ -79,17 +79,12 @@ export function AuditFeed({ entries, onRefresh }: AuditFeedProps) {
 
       <ul className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1 font-mono text-[11px] leading-relaxed">
         {visible.map((e) => (
-          <li
-            key={e.id}
-            className="rounded-lg border border-sky-950/50 bg-black/30 px-2 py-2"
-          >
+          <li key={e.id} className="rounded-lg border border-sky-950/50 bg-black/30 px-2 py-2">
             <span className="text-[10px] text-sky-600">{formatBracketTime(e.ts)}</span>
             <p className={`mt-0.5 pl-0 ${tone[e.severity]}`}>{e.message}</p>
           </li>
         ))}
-        {visible.length === 0 && (
-          <li className="text-[11px] text-sky-600">No matching events.</li>
-        )}
+        {visible.length === 0 && <li className="text-[11px] text-sky-600">No matching events.</li>}
       </ul>
     </section>
   );

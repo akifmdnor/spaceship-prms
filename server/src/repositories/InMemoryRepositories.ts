@@ -19,10 +19,24 @@ export function seedUsers(): Passenger[] {
   return [
     new Passenger("u-afni", "Afni", TierLevel.SILVER, false, "passenger", "afni@prms.local"),
     new Passenger("u-zoe", "Zoe", TierLevel.SILVER, false, "passenger", "zoe@prms.local"),
-    new Passenger("u-everest", "Everest", TierLevel.PLATINUM, true, "crew_lead", "everest@prms.local"),
+    new Passenger(
+      "u-everest",
+      "Everest",
+      TierLevel.PLATINUM,
+      true,
+      "crew_lead",
+      "everest@prms.local"
+    ),
     new Passenger("u-jack", "Jack", TierLevel.GOLD, false, "passenger", "jack@prms.local"),
     new Passenger("u-lead-1", "Rhea", TierLevel.GOLD, false, "crew_lead", "rhea@prms.local"),
-    new Passenger("u-lead-2", "Morgan", TierLevel.PLATINUM, false, "crew_lead", "morgan@prms.local"),
+    new Passenger(
+      "u-lead-2",
+      "Morgan",
+      TierLevel.PLATINUM,
+      false,
+      "crew_lead",
+      "morgan@prms.local"
+    ),
     new Passenger("u-lead-3", "Kim", TierLevel.GOLD, false, "passenger", "kim@prms.local")
   ];
 }
@@ -203,7 +217,8 @@ export class InMemoryUsageEventRepository implements IUsageEventRepository {
       if (r.outcome !== "success") continue;
       const cur = map.get(r.resourceId);
       if (cur) cur.count += 1;
-      else map.set(r.resourceId, { resourceId: r.resourceId, resourceName: r.resourceName, count: 1 });
+      else
+        map.set(r.resourceId, { resourceId: r.resourceId, resourceName: r.resourceName, count: 1 });
     }
     return [...map.values()].sort((a, b) => b.count - a.count).slice(0, limit);
   }

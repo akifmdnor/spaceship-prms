@@ -2,12 +2,7 @@ import cors from "cors";
 import express from "express";
 import { CrewLeadRegistry } from "./domain/CrewLeadRegistry.js";
 import { TierStrategy } from "./domain/TierStrategy.js";
-import {
-  InMemoryAuditLogRepository,
-  InMemoryResourceRepository,
-  InMemoryUserRepository,
-  InMemoryUsageEventRepository
-} from "./repositories/InMemoryRepositories.js";
+import { InMemoryUsageEventRepository } from "./repositories/InMemoryRepositories.js";
 import {
   PrismaAuditLogRepository,
   PrismaResourceRepository,
@@ -30,9 +25,7 @@ import { mountWebClientDistIfPresent } from "./serveWebDist.js";
  * Database mode: set DATABASE_URL and run migrations + seed.
  */
 export function createApp(overrides?: Partial<ShipContainer>) {
-  const inMemoryMode = Boolean(
-    overrides?.users && overrides?.resources && overrides?.audit
-  );
+  const inMemoryMode = Boolean(overrides?.users && overrides?.resources && overrides?.audit);
 
   if (!inMemoryMode && !process.env.DATABASE_URL) {
     throw new Error(
@@ -44,19 +37,14 @@ export function createApp(overrides?: Partial<ShipContainer>) {
   const prisma = inMemoryMode ? null : getPrisma();
 
   const tierStrategy = overrides?.tierStrategy ?? new TierStrategy();
-  const users =
-    overrides?.users ?? new PrismaUserRepository(prisma!);
-  const resources =
-    overrides?.resources ?? new PrismaResourceRepository(prisma!);
-  const audit =
-    overrides?.audit ?? new PrismaAuditLogRepository(prisma!);
+  const users = overrides?.users ?? new PrismaUserRepository(prisma!);
+  const resources = overrides?.resources ?? new PrismaResourceRepository(prisma!);
+  const audit = overrides?.audit ?? new PrismaAuditLogRepository(prisma!);
   const crewRegistry = overrides?.crewRegistry ?? CrewLeadRegistry.getInstance(3);
 
   const usageEvents =
     overrides?.usageEvents ??
-    (inMemoryMode
-      ? new InMemoryUsageEventRepository()
-      : new PrismaUsageEventRepository(prisma!));
+    (inMemoryMode ? new InMemoryUsageEventRepository() : new PrismaUsageEventRepository(prisma!));
 
   const resourceService =
     overrides?.resourceService ??

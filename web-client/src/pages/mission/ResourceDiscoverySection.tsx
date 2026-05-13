@@ -1,9 +1,9 @@
 import { ResourceGrid } from "@/components/ResourceGrid";
-import type { ApiResource } from "@/types";
+import type { ApiResource, TierLevelNum } from "@/types";
 
 type ResourceDiscoverySectionProps = {
   resources: ApiResource[];
-  userTier: number | undefined;
+  userTier: TierLevelNum | undefined;
   tierLine: string;
   onAfterUse: () => Promise<void>;
 };

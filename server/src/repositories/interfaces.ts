@@ -53,7 +53,7 @@ export interface IUsageEventRepository {
   }): Promise<void>;
   findByUserId(userId: string, limit: number): Promise<UsageEventRecord[]>;
   aggregateSuccessByTier(): Promise<{ tier: number; label: string; count: number }[]>;
-  aggregateSuccessByResource(limit: number): Promise<
-    { resourceId: string; resourceName: string; count: number }[]
-  >;
+  aggregateSuccessByResource(
+    limit: number
+  ): Promise<{ resourceId: string; resourceName: string; count: number }[]>;
 }

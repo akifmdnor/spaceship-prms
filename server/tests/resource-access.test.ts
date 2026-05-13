@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
+import request from "supertest";
 import { TierLevel } from "../src/domain/TierLevel.js";
 import { Passenger } from "../src/domain/Passenger.js";
 import { Resource } from "../src/domain/Resource.js";
@@ -11,6 +12,7 @@ import {
 } from "../src/repositories/InMemoryRepositories.js";
 import { TierStrategy } from "../src/domain/TierStrategy.js";
 import { ResourceService } from "../src/services/ResourceService.js";
+import { createApp } from "../src/app.js";
 
 describe("ResourceService.access", () => {
   beforeEach(() => {
@@ -55,6 +57,45 @@ describe("ResourceService.access", () => {
     const result = await svc.attemptAccess("u2", "med");
     expect(result.ok).toBe(true);
 
+    const events = await usage.findByUserId("u2", 5);
+    expect(events.some((e) => e.outcome === "success" && e.resourceId === "med")).toBe(true);
+  });
+
+  it("HTTP POST /resources/:id/use denies Silver → Platinum pod (middleware → authorizeResourceUse)", async () => {
+    const users = new InMemoryUserRepository([
+      new Passenger("u1", "Tester", TierLevel.SILVER, false, "passenger")
+    ]);
+    const resources = new InMemoryResourceRepository([
+      new Resource("vip", "VIP Rec Deck", TierLevel.PLATINUM, 0, 0)
+    ]);
+    const audit = new InMemoryAuditLogRepository();
+    const app = createApp({ users, resources, audit });
+
+    const res = await request(app).post("/api/resources/vip/use").set("X-User-Id", "u1");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("ACCESS_DENIED");
+    expect(res.body.details?.requiredTier).toBeDefined();
+    expect(res.body.details?.userTier).toBeDefined();
+
+    const logs = await audit.findRecent(5);
+    expect(logs.some((l) => l.severity === "alert")).toBe(true);
+  });
+
+  it("HTTP POST /resources/:id/use allows Platinum → Gold medical bay", async () => {
+    const users = new InMemoryUserRepository([
+      new Passenger("u2", "VIP", TierLevel.PLATINUM, false, "passenger")
+    ]);
+    const resources = new InMemoryResourceRepository([
+      new Resource("med", "Medical Bay", TierLevel.GOLD, 1, 40)
+    ]);
+    const audit = new InMemoryAuditLogRepository();
+    const usage = new InMemoryUsageEventRepository();
+    const app = createApp({ users, resources, audit, usageEvents: usage });
+
+    const res = await request(app).post("/api/resources/med/use").set("X-User-Id", "u2");
+
+    expect(res.status).toBe(200);
     const events = await usage.findByUserId("u2", 5);
     expect(events.some((e) => e.outcome === "success" && e.resourceId === "med")).toBe(true);
   });

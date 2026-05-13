@@ -1,22 +1,20 @@
 import type { RequestHandler } from "express";
 import { Router } from "express";
 import { TIER_LABEL } from "../domain/TierLevel.js";
+import { problemJson } from "../lib/httpError.js";
 import type { ShipContainer } from "./shipContainer.js";
 
-export function createResourceRoutes(
-  container: ShipContainer,
-  authTier: RequestHandler
-): Router {
+export function createResourceRoutes(container: ShipContainer, authTier: RequestHandler): Router {
   const r = Router();
 
   r.get("/resources", async (req, res, next) => {
     try {
       const me = await container.users.findById(req.authUserId!);
       if (!me) {
-        return res.status(401).json({ error: "Session user not found" });
+        return problemJson(res, 401, "UNAUTHORIZED", "Session user not found");
       }
       if (me.role !== "crew_lead") {
-        return res.status(403).json({ error: "Full resource catalog requires crew lead role" });
+        return problemJson(res, 403, "FORBIDDEN", "Full resource catalog requires crew lead role");
       }
       const all = await container.resources.findAll();
       res.json(
@@ -39,10 +37,12 @@ export function createResourceRoutes(
     try {
       const me = await container.users.findById(req.authUserId!);
       if (!me) {
-        return res.status(401).json({ error: "Session user not found" });
+        return problemJson(res, 401, "UNAUTHORIZED", "Session user not found");
       }
       const all = await container.resources.findAll();
-      const visible = all.filter((x) => container.tierStrategy.canAccess(me.tier, x.minRequiredTier));
+      const visible = all.filter((x) =>
+        container.tierStrategy.canAccess(me.tier, x.minRequiredTier)
+      );
       res.json(
         visible.map((x) => ({
           id: x.id,
