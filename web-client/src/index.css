@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Orbitron", ui-sans-serif, system-ui;
+  --font-mono: "Roboto Mono", ui-monospace, monospace;
+  --color-prms-bg: #0a0f12;
+  --color-prms-cyan: #00f2ff;
+  --color-prms-gold: #ffb800;
+  --color-prms-red: #ff4d4d;
+  --color-prms-muted: #4a4a4a;
+  --color-prms-panel: #1a1a1a;
+}
+
+body {
+  font-family: var(--font-mono);
+  background: var(--color-prms-bg);
+  color: #e6f7ff;
+}
+
+.title-font {
+  font-family: var(--font-display);
+}
+
+.mission-shell {
+  min-height: 100vh;
+  position: relative;
+  background-color: var(--color-prms-bg);
+}
+
+.mission-shell__content {
+  position: relative;
+}
+
+/* Retro pixel-style avatar block */
+.pixel-avatar {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow:
+    0 0 0 1px rgba(0, 242, 255, 0.35),
+    0 0 18px rgba(0, 242, 255, 0.15);
+}

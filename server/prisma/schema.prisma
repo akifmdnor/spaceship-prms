@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String @id
+  email        String @unique
+  passwordHash String @map("password_hash")
+  name         String
+  tier         Int
+  isAdmin      Boolean @default(false) @map("is_admin")
+  role         String // passenger | crew_lead
+
+  @@map("users")
+}
+
+model Resource {
+  id                String  @id
+  name              String
+  minRequiredTier   Int     @map("min_required_tier")
+  usageCount        Int     @default(0) @map("usage_count")
+  capacityPercent   Int     @default(0) @map("capacity_percent")
+  facilityBonus     String? @map("facility_bonus")
+
+  @@map("resources")
+}
+
+model AuditLog {
+  id       String   @id @db.Uuid
+  ts       DateTime @default(now())
+  severity String
+  message  String
+
+  @@index([ts(sort: Desc)])
+  @@map("audit_logs")
+}
