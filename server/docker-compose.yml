@@ -1,22 +1,4 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: prms
-      POSTGRES_PASSWORD: prms
-      POSTGRES_DB: spaceship_prms
-    ports:
-      - "5433:5432"
-    volumes:
-      - prms_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prms -d spaceship_prms"]
-      interval: 3s
-      timeout: 5s
-      retries: 15
-      start_period: 10s
-
   api:
     build:
       context: ..
@@ -24,14 +6,11 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://prms:prms@postgres:5432/spaceship_prms?schema=public
-      JWT_SECRET: ${JWT_SECRET:-dev-change-me-use-long-random-in-production}
-      PORT: "3001"
       NODE_ENV: production
-    depends_on:
-      postgres:
-        condition: service_healthy
+      PORT: "3001"
     healthcheck:
       test:
         [
@@ -51,10 +30,7 @@ services:
       dockerfile: web-client/Dockerfile
     restart: unless-stopped
     ports:
-      - "8081:80"
+      - "8091:80"
     depends_on:
       api:
         condition: service_healthy
-
-volumes:
-  prms_pg_data:

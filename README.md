@@ -1,5 +1,7 @@
 # Spaceship X26 — PRMS (Passenger Resource Management)
 
+**Live (Render, production-style deploy):** [spaceship-prms.onrender.com](https://spaceship-prms.onrender.com/)
+
 ## Data model (PostgreSQL)
 
 Core tables from `server/prisma/schema.prisma` — **User** (passengers and crew leads), **Resource** (facilities + minimum membership tier), **AuditLog** (usage and alerts; rows are append-only, message text carries context):
@@ -39,38 +41,47 @@ Domain-driven monorepo: **Express** + **PostgreSQL (Prisma)** for persistence an
 
 ## Quick start
 
+Copy **`server/.env.example`** to **`server/.env`** if you do not have one yet. PRMS is **Node + PostgreSQL only** (no Redis).
+
 ```bash
 cd spaceship-prms
 npm install
-cp server/.env.example server/.env
-npm run db:up
+# server/.env: DATABASE_URL, JWT_SECRET
 cd server && npx prisma migrate deploy && npx prisma db seed && cd ..
 npm run dev
 ```
 
 - **API:** http://localhost:3001  
 - **UI:** http://localhost:5173 (proxies `/api` to the server when using Vite defaults)  
-- **Postgres:** localhost:5433  
+- **Postgres:** whatever **`DATABASE_URL`** in **`server/.env`** points to (Compose does not run a database)
 
-`npm run db:up` starts **Postgres only** (see `server/docker-compose.yml`) so the local API can use port **3001**.
+## Full stack in Docker (UI + API)
 
-## Full stack in Docker (UI + API + Postgres)
+Stack files: `server/Dockerfile` (API), `web-client/Dockerfile` (static UI + nginx), and `server/docker-compose.yml` (`api`, `web` only). Postgres is not part of Compose: the API reads **`DATABASE_URL`** (and **`JWT_SECRET`**) from **`server/.env`** via **`env_file`**. The repo root **`docker-compose.yml`** includes the server stack for one-command runs.
 
-Stack files: `server/Dockerfile` (API), `web-client/Dockerfile` (static UI + nginx), and `server/docker-compose.yml` (Postgres, `api`, `web`). The repo root `docker-compose.yml` includes the server stack for one-command runs.
+### Ports (local Docker)
+
+| | **This repo (PRMS)** | **Inventory Reservation** (separate repo) |
+|--|----------------------|--------------------------------------------|
+| **nginx / UI** | [http://localhost:8091](http://localhost:8091) | [http://localhost:8090](http://localhost:8090) |
+| **API** | [http://localhost:3001](http://localhost:3001) | [http://localhost:3002](http://localhost:3002) |
+| **Redis** | — | `localhost:6379` (Compose) |
+
+Use **8091 vs 8090** and **3001 vs 3002** so both stacks can run on one machine without port clashes.
 
 ```bash
 cd spaceship-prms
+# Ensure server/.env exists with a reachable DATABASE_URL before:
 npm run docker:up
 # or: docker compose up -d --build
 ```
 
-- **App (UI + API proxy):** http://localhost:8081  
+- **App (UI + API proxy):** http://localhost:8091  
 - **API direct (optional):** http://localhost:3001  
-- **Postgres:** localhost:5433  
 
 For local development without Docker for Node, use `npm run dev` — Vite on http://localhost:5173 proxies `/api` to `localhost:3001`.
 
-To stop: `docker compose down`
+To stop: **`npm run db:down`** — or `docker compose down` from the repo root
 
 ### Environment (`server/.env`)
 
