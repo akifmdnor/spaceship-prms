@@ -2,7 +2,21 @@
 
 This monorepo can be deployed **from one Git connection** (Blueprint: `render.yaml`) or as **two independent services** (API + static UI) for a split pipeline.
 
-## One-shot: Blueprint (API + Postgres + static site)
+## One Render Web Service (API + SPA, single deploy)
+
+Use this when you want **one** service and **one** build at the **repository root** (no second Static Site):
+
+| Field | Value |
+|--------|--------|
+| **Root Directory** | *(leave empty)* — repo root with root `package.json` |
+| **Build Command** | `npm ci && npm run build` |
+| **Start Command** | `npm run start -w server` |
+
+`npm run build` already runs **`build` for `server` and `web-client`**. In **production**, Express serves **`web-client/dist`** from the same process, so the UI and **`/api`** share one origin. Leave **`VITE_API_BASE`** unset (or empty) for the Vite build so the client calls **`/api`** on the same host.
+
+Do **not** point **Root Directory** at `server` only for this flow — the workspace build expects the monorepo root so both packages build; the server still resolves `web-client/dist` relative to the repo layout after deploy.
+
+---
 
 1. In [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**.
 2. Connect the repo that contains **`spaceship-prms/`** as the root (or this folder if the repo is only PRMS).
@@ -21,9 +35,23 @@ This monorepo can be deployed **from one Git connection** (Blueprint: `render.ya
 | Start API | `npm run render:start:api` (`node dist/index.js` in `server/`) |
 | Build UI | `npm ci --include=dev && npm run render:build:web` |
 
-`--include=dev` is required so **Prisma** and **TypeScript** (devDependencies under `server/`) are installed for `npm run build`.
+`--include=dev` on the **API** build is optional now that the server pins build tools in `dependencies`; it does not hurt. For **web-client**, `vite` is also in `dependencies`.
 
-### Environment variables (API)
+---
+
+## Frontend: use a **Static Site** (recommended)
+
+The Vite UI should be a **Render Static Site**, not a Web Service: you only **build** and **publish** `web-client/dist`; there is no long-lived Node process.
+
+If you accidentally created a **Web Service** for the SPA, the logs show a successful `vite build` then **“Application exited early”** / **no open ports** — nothing is listening on `PORT`. Fix either:
+
+1. **Switch the service type to Static Site** (best), **or**
+2. Set **Start Command** (monorepo root): **`npm run render:start:web`**  
+   **or** (Root Directory = `web-client`): **`npm start`**.
+
+That runs **`vite preview`** with **`host: true`** and **`PORT`** from Render (see `web-client/vite.config.ts`).
+
+---
 
 | Key | Source |
 |-----|--------|

@@ -23,6 +23,7 @@ import { createAuthRouter, mountDemoAccountsHint } from "./routes/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createRequireAuth } from "./middleware/requireAuth.js";
 import { getPrisma } from "./lib/prisma.js";
+import { mountWebClientDistIfPresent } from "./serveWebDist.js";
 
 /**
  * In-memory mode (tests): pass `users`, `resources`, and `audit` overrides together.
@@ -87,6 +88,8 @@ export function createApp(overrides?: Partial<ShipContainer>) {
 
   const requireAuth = createRequireAuth(jwtSecret);
   app.use("/api", createApiRouter(container, { requireAuth }));
+
+  mountWebClientDistIfPresent(app);
 
   app.use(errorHandler);
 
