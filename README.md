@@ -1,16 +1,41 @@
-# Spaceship X26 — PRMS (Passenger Resource Management System)
+# Spaceship X26 — PRMS (Passenger Resource Management)
 
-Domain-driven monorepo: **Express** + **PostgreSQL (Prisma)** for persistence and auth, **React (Vite)** for Mission Control, and **ship rules** in a TypeScript domain layer. Tests use **in-memory repositories** with `PRMS_AUTH_TEST` header auth.
+## Data model (PostgreSQL)
 
-## Database & auth
+Core tables from `server/prisma/schema.prisma` — **User** (passengers and crew leads), **Resource** (facilities + minimum membership tier), **AuditLog** (usage and alerts; rows are append-only, message text carries context):
 
-- **PostgreSQL** schema in `server/prisma/schema.prisma` with SQL migrations under `server/prisma/migrations/`.
-- **Prisma** for queries, `prisma migrate deploy` for CI/prod, `prisma migrate dev` for local iteration.
-- **Seed** (`server/prisma/seed.ts`) loads users (bcrypt hashes), resources, and demo audit rows — same accounts as the login hint.
-- **JWT** (`Authorization: Bearer …`) protects `/api/*` except `GET /api/health`, `GET /api/meta/tiers`, `GET /api/meta/demo-accounts`, and `POST /api/auth/login`.
-- **Login**: `POST /api/auth/login` → `{ token, user }`; `GET /api/auth/me` validates the token.
+![Entity relationship diagram — User, Resource, AuditLog](docs/db-erd.png)
 
-### Quick start (local)
+## Proposed AWS cloud architecture
+
+Reference diagram (illustrative — tune VPC, subnets, and security groups for production). This stack is **stateless JWT + Postgres** (no Redis in-app):
+
+![Proposed AWS deployment](docs/aws-proposed-architecture.png)
+
+### Components
+
+| Piece | AWS service | Role |
+|--------|-------------|------|
+| **Web client** | **S3** (+ **CloudFront**) | Host the built SPA (`npm run build` in `web-client`). Set cache policies for `index.html` (short TTL) vs hashed assets (long TTL). Point **`VITE_API_BASE`** at the public API URL (Beanstalk/ALB). |
+| **API** | **Elastic Beanstalk** | Run the Express server (Docker or Node platform). Place behind **ALB** (included in typical EB web tier). Configure **security groups** so only the EB tier talks to RDS. |
+| **PostgreSQL** | **Amazon RDS** | Users, resources, audit log; same Prisma schema/migrations as local. Use Multi-AZ for production. |
+| **Functions (optional)** | **AWS Lambda** + **EventBridge** | Scheduled jobs: audit export, nightly tier/report snapshots, integration hooks — *not* required for core request path. |
+
+### Monitoring and operations
+
+- **Amazon CloudWatch** — Log groups for **Beanstalk** instances (API logs), **RDS** performance; dashboards for CPU, memory, connections, JWT-auth error rate.
+- **CloudWatch alarms + SNS** — Alert on API 5xx rate, ALB unhealthy targets, RDS free storage / high latency.
+- **AWS X-Ray** — Enable on the **Beanstalk** environment for distributed traces across login → resource use → DB.
+- **CloudWatch Synthetics** — **Canaries** that hit `/api/health` and a lightweight route such as `GET /api/meta/tiers`.
+- **Optional:** **RDS Performance Insights** and a runbook for scaling EB / RDS during high mission traffic.
+
+---
+
+Mission brief Q&A (Passenger Resource Management): **[q&a.md](q%26a.md)**
+
+Domain-driven monorepo: **Express** + **PostgreSQL (Prisma)** for persistence and auth, **React (Vite)** for Mission Control, and **ship rules** in a TypeScript domain layer. Tests may use **in-memory repositories** with `PRMS_AUTH_TEST` and `X-User-Id` headers.
+
+## Quick start
 
 ```bash
 cd spaceship-prms
@@ -21,9 +46,29 @@ cd server && npx prisma migrate deploy && npx prisma db seed && cd ..
 npm run dev
 ```
 
-- Postgres: `localhost:5433` (`npm run db:up` uses `server/docker-compose.yml` — Postgres only so the local API can use port 3001)
-- API: `http://localhost:3001`
-- UI: `http://localhost:5173` — login screen lists **all demo emails/passwords**; Everest (`everest@prms.local` / `admin-demo`) sees the **full crew roster**; everyone else sees **only their own** user in the switcher.
+- **API:** http://localhost:3001  
+- **UI:** http://localhost:5173 (proxies `/api` to the server when using Vite defaults)  
+- **Postgres:** localhost:5433  
+
+`npm run db:up` starts **Postgres only** (see `server/docker-compose.yml`) so the local API can use port **3001**.
+
+## Full stack in Docker (UI + API + Postgres)
+
+Stack files: `server/Dockerfile` (API), `web-client/Dockerfile` (static UI + nginx), and `server/docker-compose.yml` (Postgres, `api`, `web`). The repo root `docker-compose.yml` includes the server stack for one-command runs.
+
+```bash
+cd spaceship-prms
+npm run docker:up
+# or: docker compose up -d --build
+```
+
+- **App (UI + API proxy):** http://localhost:8081  
+- **API direct (optional):** http://localhost:3001  
+- **Postgres:** localhost:5433  
+
+For local development without Docker for Node, use `npm run dev` — Vite on http://localhost:5173 proxies `/api` to `localhost:3001`.
+
+To stop: `docker compose down`
 
 ### Environment (`server/.env`)
 
@@ -33,133 +78,43 @@ npm run dev
 | `JWT_SECRET` | Signing key for access tokens (set a long random value in production) |
 | `PORT` | API port (default `3001`) |
 
-### Full stack in Docker
+## Architecture: Tiers, crew leads, and audit
 
-`server/Dockerfile` builds the API; `web-client/Dockerfile` serves the Vite production build behind nginx (proxies `/api` to the `api` service). `server/docker-compose.yml` defines Postgres, `api`, and `web`; the root `docker-compose.yml` includes it.
+1. **Membership (Strategy):** `TierStrategy` enforces **Platinum ≥ Gold ≥ Silver** — higher tiers inherit access to all lower-tier resources (`server/src/domain/TierStrategy.ts`).
+2. **Rule of Three:** At most **three** crew leads; promoting a fourth returns **403** (`CrewLeadRegistry`, `ruleOfThree` middleware).
+3. **Resource use:** `POST /api/resources/:id/use` validates tier vs `Resource.minRequiredTier`, increments usage, and appends **AuditLog** entries (success or denied).
+4. **Auth:** **JWT** on `/api/*` except health, meta tier hints, demo-account list, and `POST /api/auth/login`.
 
-```bash
-cd spaceship-prms
-npm run docker:up
-```
+## API
 
-- **App (UI + API proxy):** http://localhost:8081  
-- **API direct:** http://localhost:3001  
-- **Postgres:** localhost:5433  
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/auth/login` | `{ email, password }` → JWT |
+| GET | `/api/auth/me` | Current user from Bearer token |
+| GET | `/api/health` | Liveness |
+| GET | `/api/meta/tiers` | Tier metadata (public) |
+| GET | `/api/meta/demo-accounts` | Demo login hints (public) |
+| GET | `/api/users` | Admin: roster; passenger: self only |
+| GET | `/api/resources` | List resources (Bearer) |
+| POST | `/api/resources/:id/use` | Use resource if tier allows (Bearer) |
+| POST | `/api/admin/crew-leads` | Crew-lead promotion (Rule of Three) |
+| GET | `/api/audit` | Audit feed / search (`?q=` optional) |
 
-Override the container `JWT_SECRET` with a host env var when running Compose if needed.
-
----
-
-## Workflow pillars (how this was built)
-
-### A. Foundational rigor (SOLID & OOP)
-
-- **Single responsibility**: tier checks live in `ResourceService` / `authTier` middleware; JWT identifies the acting user for resource use.
-- **Open / closed**: tiers are ordered numeric enum values; `TierStrategy` compares integers.
-
-### B. Test-driven development
-
-- **Unit / integration tests**: `server/tests/` — Vitest + Supertest; `tests/setup.ts` sets `PRMS_AUTH_TEST` so protected routes accept `X-User-Id` without JWT.
-
-### C. AI workflow (disclosure)
-
-I utilized AI to scaffold boilerplate and mock data. Core domain logic (tier inheritance, Rule of Three, repositories) was structured manually for SOLID alignment.
-
----
-
-## Architecture & design patterns
-
-| Pattern | Where | Purpose |
-| --- | --- | --- |
-| **Strategy** | `server/src/domain/TierStrategy.ts` | Tier vs resource clearance |
-| **Singleton / guard** | `server/src/domain/CrewLeadRegistry.ts` | Max three crew leads |
-| **Repository** | `server/src/repositories/*` | `Prisma*` for Postgres; in-memory for tests |
-
----
-
-## Assumptions
-
-- Three crew-lead slots; fourth promotion returns **403**.
-- Tier order: **Platinum ≥ Gold ≥ Silver**.
-- Production clients send **JWT**; tests use **`X-User-Id`** when `PRMS_AUTH_TEST=1`.
-
-## Trade-offs
-
-- **Monorepo** for easy review; services could be split later.
-- **Prisma** for migrations + types; raw SQL migrations live in `prisma/migrations`.
-- **Demo passwords** in seed and UI — **never** reuse in production.
-
----
-
-## Project layout
-
-```
-spaceship-prms/
-├── docker-compose.yml       # includes server/docker-compose.yml
-├── web-client/              # React + login + Mission Control
-├── server/
-│   ├── Dockerfile           # production API image
-│   ├── docker-compose.yml   # Postgres (+ optional api/web for docker:up)
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   ├── migrations/
-│   │   ├── seed.ts
-│   │   └── seedData.ts      # Shared constants with seed
-│   └── src/
-│       ├── domain/
-│       ├── repositories/    # prismaRepositories + in-memory
-│       ├── routes/          # api + auth
-│       └── middleware/      # requireAuth, authTier, ruleOfThree
-└── README.md
-```
-
----
-
-## npm scripts
-
-| Scope | Command |
-| --- | --- |
-| Root | `npm run dev`, `npm run db:up`, `npm run docker:up`, `npm test` |
-| Server | `npm run db:migrate -w server`, `npm run db:seed -w server`, `npm run db:studio -w server` |
-
-### Tests
+## Tests
 
 ```bash
+# Unit + integration (Vitest + Supertest)
 npm test
 ```
 
-### Client env (optional)
+`server/tests/setup.ts` sets `PRMS_AUTH_TEST`; protected routes accept **`X-User-Id`** in tests without JWT.
 
-```bash
-# web-client/.env.local — only if not using Vite proxy
-VITE_API_BASE=http://localhost:3001
-```
+## Stack
 
----
-
-## API highlights
-
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/api/auth/login` | `{ email, password }` → JWT |
-| `GET` | `/api/auth/me` | Bearer required |
-| `GET` | `/api/meta/demo-accounts` | Public hint list (matches seed) |
-| `GET` | `/api/users` | Admin: all users; else: self only |
-| `GET` | `/api/resources` | Bearer required |
-| `POST` | `/api/resources/:id/use` | Bearer identifies user |
-| `POST` | `/api/admin/crew-leads` | `requestedByAdminId` must match JWT user |
-| `GET` | `/api/audit` | Bearer required |
-
----
-
-## Production-ready checklist (status)
-
-- [x] Error handling: global Express handler + React Error Boundary
-- [x] Environment variables: `.env` + examples
-- [x] Migrations + seed for reproducible DB
-- [ ] Strong secrets and HTTPS in real deployments
-
----
+- Node 20+, TypeScript, Vitest  
+- Prisma + PostgreSQL  
+- Express, JWT (bcrypt for passwords)  
+- React 19, Vite, Tailwind  
 
 ## License
 
