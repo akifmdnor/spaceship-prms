@@ -15,7 +15,7 @@ import {
 import { AdminService } from "./services/AdminService.js";
 import { AuditLogService } from "./services/AuditLogService.js";
 import { ResourceService } from "./services/ResourceService.js";
-import type { ShipContainer } from "./routes/api.js";
+import type { ShipContainer } from "./routes/shipContainer.js";
 import { createApiRouter } from "./routes/api.js";
 import { createAuthRouter, mountDemoAccountsHint } from "./routes/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -83,4 +83,4 @@ export function createApp(overrides?: Partial<ShipContainer>) {
   return app;
 }
 
-export type { ShipContainer } from "./routes/api.js";
+export type { ShipContainer } from "./routes/shipContainer.js";
