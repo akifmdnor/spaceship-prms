@@ -9,11 +9,42 @@ export function createResourceRoutes(
 ): Router {
   const r = Router();
 
-  r.get("/resources", async (_req, res, next) => {
+  r.get("/resources", async (req, res, next) => {
     try {
+      const me = await container.users.findById(req.authUserId!);
+      if (!me) {
+        return res.status(401).json({ error: "Session user not found" });
+      }
+      if (me.role !== "crew_lead") {
+        return res.status(403).json({ error: "Full resource catalog requires crew lead role" });
+      }
       const all = await container.resources.findAll();
       res.json(
         all.map((x) => ({
+          id: x.id,
+          name: x.name,
+          minRequiredTier: x.minRequiredTier,
+          minRequiredLabel: TIER_LABEL[x.minRequiredTier],
+          usageCount: x.usageCount,
+          capacityPercent: x.capacityPercent,
+          facilityBonus: x.facilityBonus
+        }))
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get("/resources/accessible", async (req, res, next) => {
+    try {
+      const me = await container.users.findById(req.authUserId!);
+      if (!me) {
+        return res.status(401).json({ error: "Session user not found" });
+      }
+      const all = await container.resources.findAll();
+      const visible = all.filter((x) => container.tierStrategy.canAccess(me.tier, x.minRequiredTier));
+      res.json(
+        visible.map((x) => ({
           id: x.id,
           name: x.name,
           minRequiredTier: x.minRequiredTier,

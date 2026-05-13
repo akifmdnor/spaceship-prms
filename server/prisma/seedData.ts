@@ -40,8 +40,8 @@ export const SEED_ACCOUNTS: {
     name: "Everest",
     tier: TierLevel.PLATINUM,
     isAdmin: true,
-    role: "passenger",
-    hint: "Admin — full mission roster + tier upgrades"
+    role: "crew_lead",
+    hint: "Crew lead — full mission roster + tier upgrades"
   },
   {
     id: "u-jack",
@@ -61,7 +61,7 @@ export const SEED_ACCOUNTS: {
     tier: TierLevel.GOLD,
     isAdmin: false,
     role: "crew_lead",
-    hint: "Crew lead (1/3 slots)"
+    hint: "Crew lead (Operations)"
   },
   {
     id: "u-lead-2",
@@ -71,7 +71,7 @@ export const SEED_ACCOUNTS: {
     tier: TierLevel.PLATINUM,
     isAdmin: false,
     role: "crew_lead",
-    hint: "Crew lead (2/3 slots)"
+    hint: "Crew lead (Hospitality)"
   },
   {
     id: "u-lead-3",
@@ -80,8 +80,8 @@ export const SEED_ACCOUNTS: {
     name: "Kim",
     tier: TierLevel.GOLD,
     isAdmin: false,
-    role: "crew_lead",
-    hint: "Crew lead (3/3 slots — Rule of Three)"
+    role: "passenger",
+    hint: "Gold passenger (former lead slot freed for one promotion demo)"
   }
 ];
 

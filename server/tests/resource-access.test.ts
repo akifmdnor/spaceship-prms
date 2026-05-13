@@ -6,6 +6,7 @@ import { CrewLeadRegistry } from "../src/domain/CrewLeadRegistry.js";
 import {
   InMemoryAuditLogRepository,
   InMemoryResourceRepository,
+  InMemoryUsageEventRepository,
   InMemoryUserRepository
 } from "../src/repositories/InMemoryRepositories.js";
 import { TierStrategy } from "../src/domain/TierStrategy.js";
@@ -24,7 +25,8 @@ describe("ResourceService.access", () => {
       new Resource("vip", "VIP Rec Deck", TierLevel.PLATINUM, 0, 0)
     ]);
     const audit = new InMemoryAuditLogRepository();
-    const svc = new ResourceService(new TierStrategy(), users, resources, audit);
+    const usage = new InMemoryUsageEventRepository();
+    const svc = new ResourceService(new TierStrategy(), users, resources, audit, usage);
 
     const result = await svc.attemptAccess("u1", "vip");
     expect(result.ok).toBe(false);
@@ -34,6 +36,9 @@ describe("ResourceService.access", () => {
 
     const logs = await audit.findRecent(5);
     expect(logs.some((l) => l.severity === "alert")).toBe(true);
+
+    const denied = await usage.findByUserId("u1", 5);
+    expect(denied.some((e) => e.outcome === "denied" && e.resourceId === "vip")).toBe(true);
   });
 
   it("allows Platinum user to access Gold-gated medical bay", async () => {
@@ -44,9 +49,13 @@ describe("ResourceService.access", () => {
       new Resource("med", "Medical Bay", TierLevel.GOLD, 1, 40)
     ]);
     const audit = new InMemoryAuditLogRepository();
-    const svc = new ResourceService(new TierStrategy(), users, resources, audit);
+    const usage = new InMemoryUsageEventRepository();
+    const svc = new ResourceService(new TierStrategy(), users, resources, audit, usage);
 
     const result = await svc.attemptAccess("u2", "med");
     expect(result.ok).toBe(true);
+
+    const events = await usage.findByUserId("u2", 5);
+    expect(events.some((e) => e.outcome === "success" && e.resourceId === "med")).toBe(true);
   });
 });

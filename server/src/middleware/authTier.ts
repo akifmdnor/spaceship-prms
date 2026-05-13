@@ -1,15 +1,21 @@
 import type { NextFunction, Request, Response } from "express";
-import { TIER_LABEL } from "../domain/TierLevel.js";
+import { TIER_LABEL, TierLevel } from "../domain/TierLevel.js";
 import { TierStrategy } from "../domain/TierStrategy.js";
-import type { IAuditLogRepository, IResourceRepository, IUserRepository } from "../repositories/interfaces.js";
+import type {
+  IAuditLogRepository,
+  IResourceRepository,
+  IUsageEventRepository,
+  IUserRepository
+} from "../repositories/interfaces.js";
 
 export function createAuthTierMiddleware(deps: {
   users: IUserRepository;
   resources: IResourceRepository;
   audit: IAuditLogRepository;
   tierStrategy: TierStrategy;
+  usageEvents: IUsageEventRepository;
 }) {
-  const { users, resources, audit, tierStrategy } = deps;
+  const { users, resources, audit, tierStrategy, usageEvents } = deps;
 
   return async function authTier(req: Request, res: Response, next: NextFunction) {
     const rawId = req.params.id;
@@ -34,12 +40,19 @@ export function createAuthTierMiddleware(deps: {
     if (!tierStrategy.canAccess(user.tier, resource.minRequiredTier)) {
       await audit.append({
         severity: "alert",
-        message: `ALERT: User '${user.name}' (${TIER_LABEL[user.tier]}) attempted ${resource.name} — ACCESS DENIED.`
+        message: `ALERT: User '${user.name}' (${TIER_LABEL[user.tier as TierLevel]}) attempted ${resource.name} — ACCESS DENIED.`
+      });
+      await usageEvents.record({
+        userId: user.id,
+        resourceId: resource.id,
+        resourceName: resource.name,
+        userTier: user.tier,
+        outcome: "denied"
       });
       return res.status(403).json({
         error: "Access denied",
-        requiredTier: TIER_LABEL[resource.minRequiredTier],
-        userTier: TIER_LABEL[user.tier]
+        requiredTier: TIER_LABEL[resource.minRequiredTier as TierLevel],
+        userTier: TIER_LABEL[user.tier as TierLevel]
       });
     }
 

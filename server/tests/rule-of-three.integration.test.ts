@@ -17,7 +17,7 @@ describe("Rule of Three — crew lead promotions (integration)", () => {
 
   it("returns 403 when attempting to add a 4th Crew Lead", async () => {
     const users = new InMemoryUserRepository([
-      new Passenger("u-admin", "Everest", TierLevel.PLATINUM, true, "passenger"),
+      new Passenger("u-admin", "Everest", TierLevel.PLATINUM, true, "crew_lead"),
       new Passenger("lead-1", "Rhea", TierLevel.GOLD, false, "crew_lead"),
       new Passenger("lead-2", "Morgan", TierLevel.PLATINUM, false, "crew_lead"),
       new Passenger("lead-3", "Kim", TierLevel.GOLD, false, "crew_lead"),

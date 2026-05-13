@@ -35,6 +35,8 @@ Mission brief Q&A (Passenger Resource Management): **[q&a.md](q%26a.md)**
 
 Domain-driven monorepo: **Express** + **PostgreSQL (Prisma)** for persistence and auth, **React (Vite)** for Mission Control, and **ship rules** in a TypeScript domain layer. Tests may use **in-memory repositories** with `PRMS_AUTH_TEST` and `X-User-Id` headers.
 
+**Deploy on Render (Postgres + API + static UI, or split services):** see **[RENDER.md](RENDER.md)** and root **`render.yaml`**.
+
 ## Quick start
 
 ```bash

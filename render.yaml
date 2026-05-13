@@ -1,0 +1,45 @@
+# Render Blueprint — deploy PRMS as one repo: Postgres + Node API + static Vite UI.
+# Alternative: create separate Web Service / Static Site services and set Root Directory (see RENDER.md).
+#
+# After first deploy, set Static Site env VITE_API_BASE to your API public URL, e.g. https://prms-api.onrender.com
+# (Dashboard → prms-web → Environment; use the exact URL shown for prms-api.)
+
+version: "1"
+
+databases:
+  - name: prms-postgres
+    databaseName: prms
+    user: prms
+
+services:
+  # --- API (microservice: can be created alone; use same build/start/migrate commands from repo root) ---
+  - type: web
+    name: prms-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run render:build:api
+    startCommand: npm run render:start:api
+    preDeployCommand: npm run render:migrate:api
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prms-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+
+  # --- Static UI (microservice: can be created alone; Root Directory optional if using web-client-only workflow) ---
+  - type: web
+    name: prms-web
+    runtime: static
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run render:build:web
+    staticPublishPath: ./web-client/dist
+    envVars:
+      # Public URL of prms-api (https://…, no trailing slash). Set in Dashboard when prompted.
+      - key: VITE_API_BASE
+        sync: false

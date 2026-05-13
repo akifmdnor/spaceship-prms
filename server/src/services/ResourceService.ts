@@ -4,6 +4,7 @@ import { TierStrategy } from "../domain/TierStrategy.js";
 import type {
   IAuditLogRepository,
   IResourceRepository,
+  IUsageEventRepository,
   IUserRepository
 } from "../repositories/interfaces.js";
 
@@ -12,7 +13,8 @@ export class ResourceService {
     private readonly tierStrategy: TierStrategy,
     private readonly users: IUserRepository,
     private readonly resources: IResourceRepository,
-    private readonly audit: IAuditLogRepository
+    private readonly audit: IAuditLogRepository,
+    private readonly usageEvents: IUsageEventRepository
   ) {}
 
   /** Persist usage + success audit after authTier middleware has allowed the request */
@@ -21,6 +23,13 @@ export class ResourceService {
     await this.audit.append({
       severity: "success",
       message: `User '${user.name}' accessed ${resource.name}. (+1 Usage)`
+    });
+    await this.usageEvents.record({
+      userId: user.id,
+      resourceId: resource.id,
+      resourceName: resource.name,
+      userTier: user.tier,
+      outcome: "success"
     });
     return { resource: updated ?? resource, user };
   }
@@ -39,6 +48,13 @@ export class ResourceService {
       await this.audit.append({
         severity: "alert",
         message: `ALERT: User '${user.name}' attempted ${resource.name} — ACCESS DENIED.`
+      });
+      await this.usageEvents.record({
+        userId: user.id,
+        resourceId: resource.id,
+        resourceName: resource.name,
+        userTier: user.tier,
+        outcome: "denied"
       });
       return {
         ok: false as const,

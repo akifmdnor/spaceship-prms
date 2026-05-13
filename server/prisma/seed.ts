@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.auditLog.deleteMany();
+  await prisma.resourceUsageEvent.deleteMany();
   await prisma.resource.deleteMany();
   await prisma.user.deleteMany();
 

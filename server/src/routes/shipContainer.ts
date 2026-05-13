@@ -5,8 +5,9 @@ import type { AuditLogService } from "../services/AuditLogService.js";
 import type { ResourceService } from "../services/ResourceService.js";
 import type {
   IAuditLogRepository,
-  IUserRepository,
-  IResourceRepository
+  IResourceRepository,
+  IUsageEventRepository,
+  IUserRepository
 } from "../repositories/interfaces.js";
 
 export interface ShipContainer {
@@ -14,6 +15,7 @@ export interface ShipContainer {
   users: IUserRepository;
   resources: IResourceRepository;
   audit: IAuditLogRepository;
+  usageEvents: IUsageEventRepository;
   crewRegistry: CrewLeadRegistry;
   resourceService: ResourceService;
   adminService: AdminService;

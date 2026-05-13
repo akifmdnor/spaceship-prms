@@ -5,12 +5,14 @@ import { TierStrategy } from "./domain/TierStrategy.js";
 import {
   InMemoryAuditLogRepository,
   InMemoryResourceRepository,
-  InMemoryUserRepository
+  InMemoryUserRepository,
+  InMemoryUsageEventRepository
 } from "./repositories/InMemoryRepositories.js";
 import {
   PrismaAuditLogRepository,
   PrismaResourceRepository,
-  PrismaUserRepository
+  PrismaUserRepository,
+  PrismaUsageEventRepository
 } from "./repositories/prismaRepositories.js";
 import { AdminService } from "./services/AdminService.js";
 import { AuditLogService } from "./services/AuditLogService.js";
@@ -49,8 +51,15 @@ export function createApp(overrides?: Partial<ShipContainer>) {
     overrides?.audit ?? new PrismaAuditLogRepository(prisma!);
   const crewRegistry = overrides?.crewRegistry ?? CrewLeadRegistry.getInstance(3);
 
+  const usageEvents =
+    overrides?.usageEvents ??
+    (inMemoryMode
+      ? new InMemoryUsageEventRepository()
+      : new PrismaUsageEventRepository(prisma!));
+
   const resourceService =
-    overrides?.resourceService ?? new ResourceService(tierStrategy, users, resources, audit);
+    overrides?.resourceService ??
+    new ResourceService(tierStrategy, users, resources, audit, usageEvents);
   const adminService = overrides?.adminService ?? new AdminService(users, audit, crewRegistry);
   const auditService = overrides?.auditService ?? new AuditLogService(audit);
 
@@ -59,6 +68,7 @@ export function createApp(overrides?: Partial<ShipContainer>) {
     users,
     resources,
     audit,
+    usageEvents,
     crewRegistry,
     resourceService,
     adminService,

@@ -31,3 +31,29 @@ export interface IAuditLogRepository {
   findRecent(limit: number): Promise<AuditEntry[]>;
   search(query: string): Promise<AuditEntry[]>;
 }
+
+export type UsageOutcome = "success" | "denied";
+
+export interface UsageEventRecord {
+  id: string;
+  ts: string;
+  userId: string;
+  resourceId: string;
+  resourceName: string;
+  outcome: UsageOutcome;
+}
+
+export interface IUsageEventRepository {
+  record(entry: {
+    userId: string;
+    resourceId: string;
+    resourceName: string;
+    userTier: number;
+    outcome: UsageOutcome;
+  }): Promise<void>;
+  findByUserId(userId: string, limit: number): Promise<UsageEventRecord[]>;
+  aggregateSuccessByTier(): Promise<{ tier: number; label: string; count: number }[]>;
+  aggregateSuccessByResource(limit: number): Promise<
+    { resourceId: string; resourceName: string; count: number }[]
+  >;
+}

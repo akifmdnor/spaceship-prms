@@ -6,6 +6,7 @@ import { createAdminRoutes } from "./adminRoutes.js";
 import { createAuditRoutes } from "./auditRoutes.js";
 import { createPublicShipRoutes } from "./healthMetaRoutes.js";
 import { createResourceRoutes } from "./resourceRoutes.js";
+import { createReportRoutes } from "./reportRoutes.js";
 import type { ShipContainer } from "./shipContainer.js";
 import { createUserRoutes } from "./userRoutes.js";
 
@@ -24,7 +25,8 @@ export function createApiRouter(
     users: container.users,
     resources: container.resources,
     audit: container.audit,
-    tierStrategy: container.tierStrategy
+    tierStrategy: container.tierStrategy,
+    usageEvents: container.usageEvents
   });
   const ruleOfThree = createRuleOfThreeMiddleware({
     users: container.users,
@@ -35,6 +37,7 @@ export function createApiRouter(
   protectedRouter.use(requireAuth);
   protectedRouter.use(createUserRoutes(container));
   protectedRouter.use(createResourceRoutes(container, authTier));
+  protectedRouter.use(createReportRoutes(container));
   protectedRouter.use(createAuditRoutes(container));
   protectedRouter.use(createAdminRoutes(container, ruleOfThree));
 

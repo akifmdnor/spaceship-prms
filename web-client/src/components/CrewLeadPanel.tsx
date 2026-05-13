@@ -13,12 +13,12 @@ export function CrewLeadPanel() {
   );
 
   const slotsFull = crewLeadCount >= 3;
-  const admin = activeUser?.isAdmin === true;
+  const canManage = activeUser?.role === "crew_lead";
 
   const onAdd = async () => {
-    if (!activeUser || !admin || slotsFull) return;
+    if (!activeUser || !canManage || slotsFull) return;
     const candidate =
-      users.find((u) => u.role === "passenger" && !u.isAdmin && u.id !== activeUser.id) ??
+      users.find((u) => u.role === "passenger" && u.id !== activeUser.id) ??
       users.find((u) => u.role === "passenger");
     if (!candidate) return;
     setMessage(null);
@@ -36,11 +36,11 @@ export function CrewLeadPanel() {
         Crew Lead Command Center
       </p>
       <p className="mt-1 text-[9px] uppercase tracking-wide text-sky-600">
-        (Only active if an admin is selected)
+        (Only crew leads can register additional leads)
       </p>
       <button
         type="button"
-        disabled={!admin || slotsFull}
+        disabled={!canManage || slotsFull}
         onClick={onAdd}
         className="mt-4 w-full rounded-[10px] border-2 border-[#4a4a4a] bg-[#2a2a2a]/80 px-3 py-3 text-[11px] font-bold uppercase tracking-wider text-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -55,8 +55,8 @@ export function CrewLeadPanel() {
           </>
         )}
       </p>
-      {!admin && (
-        <p className="mt-2 text-[10px] text-sky-600">Select admin user (Everest) to enable.</p>
+      {!canManage && (
+        <p className="mt-2 text-[10px] text-sky-600">Select a crew lead account to enable.</p>
       )}
       {message && <p className="mt-2 text-[10px] text-[#ff4d4d]">{message}</p>}
     </section>

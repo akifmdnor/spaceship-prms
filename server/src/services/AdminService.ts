@@ -36,8 +36,8 @@ export class AdminService {
 
     const { userId, requestedByAdminId } = parsed.data;
     const admin = await this.users.findById(requestedByAdminId);
-    if (!admin?.isAdmin) {
-      return { ok: false, status: 403, error: "Only admins may register crew leads" };
+    if (!admin || admin.role !== "crew_lead") {
+      return { ok: false, status: 403, error: "Only crew leads may register crew leads" };
     }
 
     const target = await this.users.findById(userId);
@@ -83,8 +83,8 @@ export class AdminService {
 
     const { targetUserId, newTier, adminId } = parsed.data;
     const admin = await this.users.findById(adminId);
-    if (!admin?.isAdmin) {
-      return { ok: false, status: 403, error: "Only admins may change tiers" };
+    if (!admin || admin.role !== "crew_lead") {
+      return { ok: false, status: 403, error: "Only crew leads may change tiers" };
     }
 
     const target = await this.users.findById(targetUserId);

@@ -69,6 +69,13 @@ export const api = {
       })
     );
   },
+  async resourcesAccessible(): Promise<ApiResource[]> {
+    return handle(
+      await fetch(`${base}/api/resources/accessible`, {
+        headers: buildHeaders()
+      })
+    );
+  },
   async audit(q?: string): Promise<AuditEntry[]> {
     const url = q ? `${base}/api/audit?q=${encodeURIComponent(q)}` : `${base}/api/audit`;
     return handle(await fetch(url, { headers: buildHeaders() }));
@@ -87,6 +94,17 @@ export const api = {
         method: "POST",
         headers: { ...buildHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(payload)
+      })
+    );
+  },
+
+  async myUsage(limit?: number): Promise<
+    { id: string; ts: string; userId: string; resourceId: string; resourceName: string; outcome: string }[]
+  > {
+    const q = limit != null ? `?limit=${encodeURIComponent(String(limit))}` : "";
+    return handle(
+      await fetch(`${base}/api/me/usage${q}`, {
+        headers: buildHeaders()
       })
     );
   }

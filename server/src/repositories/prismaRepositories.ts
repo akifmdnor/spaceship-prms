@@ -3,12 +3,15 @@ import { randomUUID } from "node:crypto";
 import type { CrewRole } from "../domain/Passenger.js";
 import { Passenger } from "../domain/Passenger.js";
 import { Resource } from "../domain/Resource.js";
-import { TierLevel } from "../domain/TierLevel.js";
+import { TierLevel, TIER_LABEL } from "../domain/TierLevel.js";
 import type {
   AuditEntry,
   IAuditLogRepository,
   IResourceRepository,
-  IUserRepository
+  IUsageEventRepository,
+  IUserRepository,
+  UsageEventRecord,
+  UsageOutcome
 } from "./interfaces.js";
 
 function toAud(m: { id: string; ts: Date; severity: string; message: string }): AuditEntry {
@@ -163,5 +166,81 @@ export class PrismaUserRepository implements IUserRepository {
     } catch {
       return undefined;
     }
+  }
+}
+
+export class PrismaUsageEventRepository implements IUsageEventRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async record(entry: {
+    userId: string;
+    resourceId: string;
+    resourceName: string;
+    userTier: number;
+    outcome: UsageOutcome;
+  }): Promise<void> {
+    await this.db.resourceUsageEvent.create({
+      data: {
+        userId: entry.userId,
+        resourceId: entry.resourceId,
+        userTier: entry.userTier,
+        outcome: entry.outcome
+      }
+    });
+  }
+
+  async findByUserId(userId: string, limit: number): Promise<UsageEventRecord[]> {
+    const rows = await this.db.resourceUsageEvent.findMany({
+      where: { userId },
+      orderBy: { ts: "desc" },
+      take: limit,
+      include: { resource: { select: { name: true } } }
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      ts: r.ts.toISOString(),
+      userId: r.userId,
+      resourceId: r.resourceId,
+      resourceName: r.resource.name,
+      outcome: r.outcome as UsageOutcome
+    }));
+  }
+
+  async aggregateSuccessByTier(): Promise<{ tier: number; label: string; count: number }[]> {
+    const rows = await this.db.resourceUsageEvent.groupBy({
+      by: ["userTier"],
+      where: { outcome: "success" },
+      _count: { id: true },
+      orderBy: { userTier: "asc" }
+    });
+    return rows.map((r) => ({
+      tier: r.userTier,
+      label: TIER_LABEL[r.userTier as TierLevel] ?? String(r.userTier),
+      count: r._count.id
+    }));
+  }
+
+  async aggregateSuccessByResource(
+    limit: number
+  ): Promise<{ resourceId: string; resourceName: string; count: number }[]> {
+    const capped = Math.min(500, Math.max(1, limit));
+    const grouped = await this.db.resourceUsageEvent.groupBy({
+      by: ["resourceId"],
+      where: { outcome: "success" },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: capped
+    });
+    const ids = grouped.map((g) => g.resourceId);
+    const names = await this.db.resource.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true }
+    });
+    const nameById = new Map(names.map((n) => [n.id, n.name] as const));
+    return grouped.map((g) => ({
+      resourceId: g.resourceId,
+      resourceName: nameById.get(g.resourceId) ?? g.resourceId,
+      count: g._count.id
+    }));
   }
 }

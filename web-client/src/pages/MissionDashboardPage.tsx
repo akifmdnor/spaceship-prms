@@ -17,13 +17,15 @@ export function MissionDashboardPage() {
   const refresh = useCallback(async () => {
     setLoadError(null);
     try {
-      const [r, a] = await Promise.all([api.resources(), api.audit()]);
+      const resourceReq =
+        activeUser?.role === "crew_lead" ? api.resources() : api.resourcesAccessible();
+      const [r, a] = await Promise.all([resourceReq, api.audit()]);
       setResources(r);
       setAudit(a);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load mission data");
     }
-  }, []);
+  }, [activeUser?.id, activeUser?.role]);
 
   useEffect(() => {
     void refresh();

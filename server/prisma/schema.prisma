@@ -16,6 +16,8 @@ model User {
   isAdmin      Boolean @default(false) @map("is_admin")
   role         String // passenger | crew_lead
 
+  usageEvents ResourceUsageEvent[]
+
   @@map("users")
 }
 
@@ -27,7 +29,25 @@ model Resource {
   capacityPercent   Int     @default(0) @map("capacity_percent")
   facilityBonus     String? @map("facility_bonus")
 
+  usageEvents ResourceUsageEvent[]
+
   @@map("resources")
+}
+
+model ResourceUsageEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  ts         DateTime @default(now())
+  userId     String   @map("user_id")
+  resourceId String   @map("resource_id")
+  userTier   Int      @map("user_tier")
+  outcome    String // success | denied
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, ts(sort: Desc)])
+  @@index([outcome, ts(sort: Desc)])
+  @@map("resource_usage_events")
 }
 
 model AuditLog {

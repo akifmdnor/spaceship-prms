@@ -11,7 +11,7 @@ export function createUserRoutes(container: ShipContainer): Router {
       if (!me) {
         return res.status(401).json({ error: "Session user not found" });
       }
-      const list = me.isAdmin ? await container.users.findAll() : [me];
+      const list = me.role === "crew_lead" ? await container.users.findAll() : [me];
       res.json(
         list.map((u) => ({
           id: u.id,

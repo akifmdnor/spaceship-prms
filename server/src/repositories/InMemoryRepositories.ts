@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Passenger } from "../domain/Passenger.js";
 import { Resource } from "../domain/Resource.js";
-import { TierLevel } from "../domain/TierLevel.js";
+import { TierLevel, TIER_LABEL } from "../domain/TierLevel.js";
 import type {
   AuditEntry,
   IAuditLogRepository,
   IResourceRepository,
-  IUserRepository
+  IUsageEventRepository,
+  IUserRepository,
+  UsageEventRecord,
+  UsageOutcome
 } from "./interfaces.js";
 
 const now = () => new Date().toISOString();
@@ -16,11 +19,11 @@ export function seedUsers(): Passenger[] {
   return [
     new Passenger("u-afni", "Afni", TierLevel.SILVER, false, "passenger", "afni@prms.local"),
     new Passenger("u-zoe", "Zoe", TierLevel.SILVER, false, "passenger", "zoe@prms.local"),
-    new Passenger("u-everest", "Everest", TierLevel.PLATINUM, true, "passenger", "everest@prms.local"),
+    new Passenger("u-everest", "Everest", TierLevel.PLATINUM, true, "crew_lead", "everest@prms.local"),
     new Passenger("u-jack", "Jack", TierLevel.GOLD, false, "passenger", "jack@prms.local"),
     new Passenger("u-lead-1", "Rhea", TierLevel.GOLD, false, "crew_lead", "rhea@prms.local"),
     new Passenger("u-lead-2", "Morgan", TierLevel.PLATINUM, false, "crew_lead", "morgan@prms.local"),
-    new Passenger("u-lead-3", "Kim", TierLevel.GOLD, false, "crew_lead", "kim@prms.local")
+    new Passenger("u-lead-3", "Kim", TierLevel.GOLD, false, "passenger", "kim@prms.local")
   ];
 }
 
@@ -144,5 +147,68 @@ export class InMemoryAuditLogRepository implements IAuditLogRepository {
 
   _reset(seed?: AuditEntry[]): void {
     this.entries = seed ? [...seed] : [];
+  }
+}
+
+type StoredUsageEvent = UsageEventRecord & { userTier: number };
+
+export class InMemoryUsageEventRepository implements IUsageEventRepository {
+  private rows: StoredUsageEvent[] = [];
+
+  async record(entry: {
+    userId: string;
+    resourceId: string;
+    resourceName: string;
+    userTier: number;
+    outcome: UsageOutcome;
+  }): Promise<void> {
+    this.rows.unshift({
+      id: randomUUID(),
+      ts: now(),
+      userId: entry.userId,
+      resourceId: entry.resourceId,
+      resourceName: entry.resourceName,
+      userTier: entry.userTier,
+      outcome: entry.outcome
+    });
+  }
+
+  async findByUserId(userId: string, limit: number): Promise<UsageEventRecord[]> {
+    return this.rows
+      .filter((r) => r.userId === userId)
+      .slice(0, limit)
+      .map(({ userTier: _t, ...pub }) => pub);
+  }
+
+  async aggregateSuccessByTier(): Promise<{ tier: number; label: string; count: number }[]> {
+    const byTier = new Map<number, number>();
+    for (const r of this.rows) {
+      if (r.outcome !== "success") continue;
+      byTier.set(r.userTier, (byTier.get(r.userTier) ?? 0) + 1);
+    }
+    return [...byTier.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([tier, count]) => ({
+        tier,
+        label: TIER_LABEL[tier as TierLevel] ?? String(tier),
+        count
+      }));
+  }
+
+  async aggregateSuccessByResource(
+    limit: number
+  ): Promise<{ resourceId: string; resourceName: string; count: number }[]> {
+    const map = new Map<string, { resourceId: string; resourceName: string; count: number }>();
+    for (const r of this.rows) {
+      if (r.outcome !== "success") continue;
+      const cur = map.get(r.resourceId);
+      if (cur) cur.count += 1;
+      else map.set(r.resourceId, { resourceId: r.resourceId, resourceName: r.resourceName, count: 1 });
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, limit);
+  }
+
+  _reset(): void {
+    this.rows = [];
   }
 }
