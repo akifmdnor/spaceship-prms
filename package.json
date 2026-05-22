@@ -23,8 +23,8 @@
     "test:coverage": "npm run test:coverage -w server",
     "lint": "eslint server web-client --max-warnings 0",
     "lint:fix": "eslint server web-client --fix --max-warnings 0",
-    "format": "prettier --write \"server/**/*.{ts,tsx}\" \"web-client/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"server/**/*.{ts,tsx}\" \"web-client/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"server/**/*.{ts,tsx}\" \"web-client/**/*.{ts,tsx}\" \".github/**/*.{yml,yaml}\"",
+    "format:check": "prettier --check \"server/**/*.{ts,tsx}\" \"web-client/**/*.{ts,tsx}\" \".github/**/*.{yml,yaml}\"",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web-client"
   },
   "devDependencies": {
